@@ -608,10 +608,9 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-def on_startup():
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables ready")
+# Create tables immediately at import time
+Base.metadata.create_all(bind=engine)
+logger.info("Database tables ready")
 
 
 # ═══════════════════════════════════════════════════════════
