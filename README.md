@@ -34,7 +34,7 @@ Traditional ticketing systems are either too basic (offering no tracking) or ove
 ### Ticket Detail & Operations
 *The operational console for updating ticket state, reviewing client description, and appending progress notes onto the activity log.*
 
-*   **Live Demo:** `https://supportflow.vercel.app` *(Placeholder)*
+*   **Live Demo:** https://support-flow-chi.vercel.app/ 
 *   **Walkthrough Video:** `https://drive.google.com/file/d/1tF18JDvoxga_O105UgFjJeGnHVXFcz10/view?usp=drive_link*
 
 ---
