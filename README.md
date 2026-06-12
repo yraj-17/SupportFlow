@@ -59,39 +59,41 @@ Traditional ticketing systems are either too basic (offering no tracking) or ove
 
 ## 📐 Project Architecture
 
+## 🏗️ System Architecture
+
+```mermaid
 graph TD
-    subgraph Client [Frontend React App]
-        Landing[Landing & Create Ticket]
-        Auth[Login / Sign Up / Verify OTP]
-        Dash[Agent Dashboard]
-        Detail[Ticket Operations Detail]
-        Axios[Axios HTTP Client]
-        AuthCtx[Auth Context & Interceptor]
+    subgraph Client["Frontend React App"]
+        Landing["Landing & Create Ticket"]
+        Auth["Login / Sign Up / Verify OTP"]
+        Dash["Agent Dashboard"]
+        Detail["Ticket Operations Detail"]
+        Axios["Axios HTTP Client"]
+        AuthCtx["Auth Context & Interceptor"]
     end
 
-    subgraph Server [Backend FastAPI App]
-        API[FastAPI Router]
-        AuthSvc[Auth & Session Service]
-        TktSvc[Ticket Operations Service]
-        EmailSvc[SMTP Email Service]
+    subgraph Server["Backend FastAPI App"]
+        API["FastAPI Router"]
+        AuthSvc["Auth & Session Service"]
+        TktSvc["Ticket Operations Service"]
+        EmailSvc["SMTP Email Service"]
     end
 
-    subgraph Storage [SQLite Database]
-        db[(crm.db file)]
+    subgraph Storage["SQLite Database"]
+        db[("crm.db file")]
     end
 
-    %% Flow lines
-    Landing -->|POST /api/tickets| API
-    Auth -->|POST /api/auth/login| API
-    Dash -->|GET /api/tickets| API
-    Detail -->|PUT /api/tickets/{id}| API
-    
+    Landing -->|"POST /api/tickets"| API
+    Auth -->|"POST /api/auth/login"| API
+    Dash -->|"GET /api/tickets"| API
+    Detail -->|"PUT /api/tickets/{id}"| API
+
     API --> AuthSvc
     API --> TktSvc
-    AuthSvc -->|Generate Code / SMTP| EmailSvc
-    
-    AuthSvc -->|Queries & Transactions| db
-    TktSvc -->|Queries & Transactions| db
+    AuthSvc -->|"Generate Code / SMTP"| EmailSvc
+
+    AuthSvc -->|"Queries & Transactions"| db
+    TktSvc -->|"Queries & Transactions"| db
 
     Axios <--> AuthCtx
     AuthCtx <--> Landing
