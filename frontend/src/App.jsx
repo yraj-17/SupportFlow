@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { RefreshCw } from 'lucide-react'
 
 import Home from './pages/Home'
 import CreateTicket from './pages/CreateTicket'
@@ -14,40 +13,17 @@ import VerifyOtp from './pages/VerifyOtp'
 import MainLayout from './layouts/MainLayout'
 import { DarkModeProvider } from './context/DarkModeContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import FullPageSpinner from './components/FullPageSpinner'
 
-// Route Guard for authenticated paths
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth()
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="animate-spin text-brand-500" size={28} />
-          <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Loading Session...</span>
-        </div>
-      </div>
-    )
-  }
-
+  if (loading) return <FullPageSpinner label="Restoring session" />
   return isAuthenticated ? children : <Navigate to="/login" replace />
 }
 
-// Route Guard for auth/public page paths (guest only)
 function PublicRoute({ children }) {
   const { isAuthenticated, loading } = useAuth()
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="animate-spin text-brand-500" size={28} />
-          <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Loading Session...</span>
-        </div>
-      </div>
-    )
-  }
-
+  if (loading) return <FullPageSpinner label="Restoring session" />
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : children
 }
 
@@ -60,32 +36,29 @@ export default function App() {
             position="top-right"
             toastOptions={{
               duration: 3000,
-              style: { 
-                fontSize: '14px', 
+              style: {
+                fontSize: '13px',
+                fontWeight: 500,
                 borderRadius: '12px',
-                background: '#1f2937',
-                color: '#ffffff'
-              }
+                background: 'rgb(19 19 26 / 0.95)',
+                color: '#ffffff',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 10px 40px -8px rgba(0,0,0,0.4)'
+              },
+              success: { iconTheme: { primary: '#8b5cf6', secondary: '#ffffff' } },
+              error: { iconTheme: { primary: '#ef4444', secondary: '#ffffff' } },
             }}
           />
           <MainLayout>
             <Routes>
-              {/* Public SaaS Landing Page */}
               <Route path="/" element={<Landing />} />
-
-              {/* Public/Guest Authentication Routes */}
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
               <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
               <Route path="/verify-otp" element={<PublicRoute><VerifyOtp /></PublicRoute>} />
-
-              {/* Public Support Submission Route */}
               <Route path="/tickets/new" element={<CreateTicket />} />
-
-              {/* Protected Internal Agent Routes */}
               <Route path="/dashboard" element={<PrivateRoute><Home /></PrivateRoute>} />
               <Route path="/tickets/:ticketId" element={<PrivateRoute><TicketDetail /></PrivateRoute>} />
-
-              {/* Fallback 404 Route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </MainLayout>

@@ -1,16 +1,18 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { 
-  Search, 
-  SlidersHorizontal, 
-  ChevronRight, 
-  RefreshCw, 
+import {
+  Search,
+  SlidersHorizontal,
+  ChevronRight,
+  ChevronLeft,
+  RefreshCw,
   Download,
-  ArrowUpDown,
   ArrowUp,
   ArrowDown,
   Inbox,
-  PlusCircle
+  PlusCircle,
+  X,
+  Filter,
 } from 'lucide-react'
 import { ticketsApi } from '../api/tickets'
 import { StatusBadge, PriorityBadge } from '../components/StatusBadge'
@@ -18,44 +20,57 @@ import StatsBar from '../components/StatsBar'
 import { exportToCSV } from '../utils/csvExport'
 import toast from 'react-hot-toast'
 
-const STATUSES  = ['All', 'Open', 'In Progress', 'Closed']
+const STATUSES = ['All', 'Open', 'In Progress', 'Closed']
 const PRIORITIES = ['All', 'High', 'Medium', 'Low']
 
 function formatDate(ts) {
   return new Date(ts).toLocaleDateString('en-IN', {
-    day: 'numeric', 
-    month: 'short', 
-    year: 'numeric'
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
   })
 }
 
-export default function Home() {
-  const [tickets, setTickets]     = useState([])
-  const [stats, setStats]         = useState(null)
-  const [search, setSearch]       = useState('')
-  const [status, setStatus]       = useState('All')
-  const [priority, setPriority]   = useState('All')
-  const [loading, setLoading]     = useState(true)
-  
-  // Sorting & Pagination States
-  const [sortOrder, setSortOrder] = useState('desc') // desc | asc
-  const [currentPage, setCurrentPage] = useState(1)
-  const pageSize = 6 // Number of tickets to render per page
+function SkeletonRow() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-[120px_1fr_200px_180px_110px_40px] gap-4 px-6 py-4 items-center">
+      <div className="skeleton h-6 w-20" />
+      <div className="space-y-2">
+        <div className="skeleton h-4 w-3/4" />
+        <div className="skeleton h-3 w-1/3" />
+      </div>
+      <div className="skeleton h-3 w-32 hidden md:block" />
+      <div className="skeleton h-6 w-32 hidden md:block" />
+      <div className="skeleton h-3 w-20 hidden md:block" />
+      <div className="skeleton h-4 w-4 ml-auto hidden md:block" />
+    </div>
+  )
+}
 
-  // Fetch tickets and statistics counts
+export default function Home() {
+  const [tickets, setTickets] = useState([])
+  const [stats, setStats] = useState(null)
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState('All')
+  const [priority, setPriority] = useState('All')
+  const [loading, setLoading] = useState(true)
+  const [sortOrder, setSortOrder] = useState('desc')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 6
+
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
       const params = {}
-      if (search.trim())            params.search   = search.trim()
-      if (status !== 'All')         params.status   = status
-      if (priority !== 'All')       params.priority = priority
+      if (search.trim()) params.search = search.trim()
+      if (status !== 'All') params.status = status
+      if (priority !== 'All') params.priority = priority
 
       const [ticketsRes, statsRes] = await Promise.all([
         ticketsApi.list(params),
         ticketsApi.stats(),
       ])
-      
+
       setTickets(ticketsRes.data)
       setStats(statsRes.data)
     } catch (err) {
@@ -66,18 +81,11 @@ export default function Home() {
     }
   }, [search, status, priority])
 
-  // Debounce search input changes
   useEffect(() => {
     const timer = setTimeout(fetchData, 300)
     return () => clearTimeout(timer)
   }, [fetchData])
 
-  // Reset pagination page when filters change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [search, status, priority])
-
-  // Sort tickets in memory based on sortOrder
   const sortedTickets = useMemo(() => {
     return [...tickets].sort((a, b) => {
       const timeA = new Date(a.created_at).getTime()
@@ -86,15 +94,14 @@ export default function Home() {
     })
   }, [tickets, sortOrder])
 
-  // Paginated Slice
   const totalPages = Math.ceil(sortedTickets.length / pageSize)
   const paginatedTickets = useMemo(() => {
     const start = (currentPage - 1) * pageSize
     return sortedTickets.slice(start, start + pageSize)
-  }, [sortedTickets, currentPage, pageSize])
+  }, [sortedTickets, currentPage])
 
   const toggleSort = () => {
-    setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')
+    setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))
     toast.success(`Sorted by date: ${sortOrder === 'desc' ? 'oldest first' : 'newest first'}`)
   }
 
@@ -107,269 +114,221 @@ export default function Home() {
     toast.success('CSV export downloaded')
   }
 
+  const hasActiveFilters = search.trim() || status !== 'All' || priority !== 'All'
+  const handleSearchChange = (e) => {
+    setCurrentPage(1)
+    setSearch(e.target.value)
+  }
+  const handleStatusChange = (value) => {
+    setCurrentPage(1)
+    setStatus(value)
+  }
+  const handlePriorityChange = (value) => {
+    setCurrentPage(1)
+    setPriority(value)
+  }
+  const clearFilters = () => {
+    setCurrentPage(1)
+    setSearch('')
+    setStatus('All')
+    setPriority('All')
+  }
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
-      
-      {/* ── HEADER TITLE ──────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 animate-fade-up">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Support Tickets</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Track, manage, and resolve customer support queries in real time.</p>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="chip">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping bg-brand-500" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
+              </span>
+              Live
+            </span>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-text-primary">Support Tickets</h1>
+          <p className="text-sm text-text-tertiary mt-1.5">Track, manage, and resolve customer support queries in real time.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={fetchData} 
-            className="btn-secondary"
-            title="Refresh tickets list"
-          >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-            Refresh
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={fetchData} className="btn-secondary !text-xs" title="Refresh tickets">
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
-          <button 
-            onClick={handleExport} 
-            className="btn-secondary flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-            title="Export filtered tickets to CSV"
-          >
-            <Download size={15} />
-            Export CSV
+          <button onClick={handleExport} className="btn-secondary !text-xs" title="Export filtered tickets to CSV">
+            <Download size={14} />
+            <span className="hidden sm:inline">Export CSV</span>
           </button>
         </div>
       </div>
 
-      {/* Stats Cards grid */}
       <StatsBar stats={stats} />
 
-      {/* ── FILTER & TOOLBAR CARD ──────────────────────────────── */}
-      <div className="card !rounded-control p-5 space-y-4">
-        <div className="flex flex-col xl:flex-row gap-4 justify-between">
-          
-          {/* Search bar */}
-          <div className="relative flex-1 max-w-lg">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+      <div className="card p-4 sm:p-5 animate-fade-up delay-200">
+        <div className="flex flex-col xl:flex-row gap-4 xl:items-center xl:justify-between">
+          <div className="relative flex-1 max-w-lg group">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-brand-500 transition-colors pointer-events-none" />
             <input
               type="text"
-              className="input pl-10"
-              placeholder="Search by ID (e.g. TKT-001), customer name, email, subject..."
+              className="input pl-10 pr-9"
+              placeholder="Search by ID, customer, email, subject…"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={handleSearchChange}
             />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-2 transition" aria-label="Clear search">
+                <X size={14} />
+              </button>
+            )}
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-wrap">
-            {/* Status filters */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1">
-                <SlidersHorizontal size={12} />
-                Status
-              </span>
-              <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-control">
-                {STATUSES.map(s => (
-                  <button
-                    key={s}
-                    onClick={() => setStatus(s)}
-                    className={`px-3 py-1.5 rounded-small text-xs font-semibold transition-all ${
-                      status === s
-                        ? 'bg-white dark:bg-gray-800 text-brand-600 dark:text-brand-400 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Priority filters */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                Priority
-              </span>
-              <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-control">
-                {PRIORITIES.map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setPriority(p)}
-                    className={`px-3 py-1.5 rounded-small text-xs font-semibold transition-all ${
-                      priority === p
-                        ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
-                        : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+            <FilterPills label="Status" icon={SlidersHorizontal} options={STATUSES} value={status} onChange={handleStatusChange} />
+            <FilterPills label="Priority" icon={Filter} options={PRIORITIES} value={priority} onChange={handlePriorityChange} />
           </div>
         </div>
+
+        {hasActiveFilters && (
+          <div className="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-border animate-fade-down">
+            <p className="text-xs text-text-tertiary font-semibold">{tickets.length} matching record{tickets.length !== 1 ? 's' : ''}</p>
+            <button onClick={clearFilters} className="text-xs font-bold text-brand-500 hover:text-brand-600 inline-flex items-center gap-1 transition">
+              <X size={12} />
+              Clear filters
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* ── TICKETS TABLE & GRID CARD ──────────────────────────── */}
-      <div className="card overflow-hidden">
-        
-        {/* Table header (Desktop only) */}
-        <div className="hidden md:grid grid-cols-[120px_1fr_200px_130px_110px_40px] gap-4 px-6 py-3.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider items-center">
+      <div className="card overflow-hidden animate-fade-up delay-300">
+        <div className="hidden md:grid grid-cols-[120px_1fr_200px_180px_110px_40px] gap-4 px-6 py-3.5 border-b border-border bg-surface-2/60 text-[11px] font-bold text-text-tertiary uppercase tracking-wider items-center">
           <span>Ticket ID</span>
-          <span>Subject & Customer</span>
+          <span>Subject &amp; Customer</span>
           <span>Email</span>
-          <span>Status</span>
-          
-          {/* Sorting Trigger Column header */}
-          <button 
-            onClick={toggleSort}
-            className="flex items-center gap-1.5 hover:text-brand-500 transition font-bold text-left"
-          >
-            Created At
-            {sortOrder === 'desc' ? <ArrowDown size={13} /> : <ArrowUp size={13} />}
+          <span>Status / Priority</span>
+          <button onClick={toggleSort} className="flex items-center gap-1.5 hover:text-brand-500 transition text-left font-bold">
+            Created
+            {sortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
           </button>
-          <span></span>
+          <span />
         </div>
 
-        {/* Loading State */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-20 text-gray-400">
-            <RefreshCw size={24} className="animate-spin text-brand-500" />
-            <span className="text-sm font-medium">Fetching support tickets...</span>
-          </div>
+          <div className="divide-y divide-border">{[0, 1, 2, 3].map((i) => <SkeletonRow key={i} />)}</div>
         ) : paginatedTickets.length === 0 ? (
-          
-          /* Empty state */
-          <div className="py-20 text-center px-4">
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-full inline-block mb-4">
-              <Inbox size={32} className="text-gray-400 dark:text-gray-600" />
+          <div className="py-20 text-center px-4 animate-fade-in">
+            <div className="relative inline-block mb-6">
+              <div className="absolute inset-0 rounded-full bg-brand-500/15 blur-2xl animate-pulse-soft" />
+              <div className="relative w-16 h-16 mx-auto rounded-2xl bg-surface-2 border border-border flex items-center justify-center">
+                <Inbox size={26} className="text-text-tertiary" />
+              </div>
             </div>
-            <h3 className="text-base font-bold text-gray-900 dark:text-white">No Tickets Found</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto mt-1">
-              There are no support tickets matching your current search filters. Create a new support ticket to get started.
+            <h3 className="text-lg font-bold text-text-primary">No tickets found</h3>
+            <p className="text-sm text-text-tertiary max-w-sm mx-auto mt-2 leading-relaxed">
+              {hasActiveFilters
+                ? 'No tickets match your current filters. Try clearing them or adjusting your search.'
+                : 'You have no support tickets yet. Create a new ticket to get started.'}
             </p>
-            <div className="mt-5">
-              <Link to="/tickets/new" className="btn-primary inline-flex items-center gap-2">
-                <PlusCircle size={15} />
+            <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
+              {hasActiveFilters && (
+                <button onClick={clearFilters} className="btn-secondary !text-xs">
+                  <X size={13} />
+                  Clear filters
+                </button>
+              )}
+              <Link to="/tickets/new" className="btn-primary !text-xs">
+                <PlusCircle size={14} />
                 Create New Ticket
               </Link>
             </div>
           </div>
-          
         ) : (
-          
-          /* Table Lists rendering */
-          <div className="divide-y divide-gray-100 dark:divide-gray-700">
-            {paginatedTickets.map((ticket) => (
+          <div className="divide-y divide-border">
+            {paginatedTickets.map((ticket, idx) => (
               <Link
                 key={ticket.ticket_id}
                 to={`/tickets/${ticket.ticket_id}`}
-                className="grid grid-cols-1 md:grid-cols-[120px_1fr_200px_130px_110px_40px] gap-2 md:gap-4 px-6 py-4 items-center hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition duration-150 group"
+                className="group grid grid-cols-1 md:grid-cols-[120px_1fr_200px_180px_110px_40px] gap-3 md:gap-4 px-4 md:px-6 py-4 items-center hover:bg-surface-2/60 transition-colors duration-200 animate-fade-up"
+                style={{ animationDelay: `${idx * 35}ms` }}
               >
-                {/* ID */}
                 <div className="flex justify-between items-center md:block">
-                  <span className="font-mono text-xs font-bold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/40 px-2.5 py-1 rounded-lg">
+                  <span className="font-mono text-[11px] font-bold text-brand-600 dark:text-brand-300 bg-brand-500/10 dark:bg-brand-500/15 border border-brand-500/20 px-2.5 py-1 rounded-md inline-block">
                     {ticket.ticket_id}
                   </span>
-                  
-                  {/* Priority Badge on mobile */}
-                  <span className="md:hidden">
-                    <PriorityBadge priority={ticket.priority} />
-                  </span>
+                  <span className="md:hidden"><PriorityBadge priority={ticket.priority} /></span>
                 </div>
 
-                {/* Subject & Name */}
-                <div className="min-w-0 pr-4">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition">
-                    {ticket.subject}
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5">
-                    Raised by <span className="font-medium text-gray-600 dark:text-gray-400">{ticket.customer_name}</span>
-                  </p>
+                <div className="min-w-0 pr-3">
+                  <p className="text-sm font-bold text-text-primary truncate group-hover:text-brand-500 dark:group-hover:text-brand-300 transition-colors">{ticket.subject}</p>
+                  <p className="text-xs text-text-tertiary truncate mt-1">Raised by <span className="font-semibold text-text-secondary">{ticket.customer_name}</span></p>
                 </div>
 
-                {/* Email (hidden on mobile) */}
-                <span className="text-xs text-gray-500 dark:text-gray-400 truncate hidden md:block">
-                  {ticket.customer_email}
-                </span>
+                <span className="text-xs text-text-tertiary truncate hidden md:block font-medium">{ticket.customer_email}</span>
 
-                {/* Status and Priority Badges */}
-                <div className="flex items-center gap-2 md:block">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <StatusBadge status={ticket.status} />
-                  <span className="hidden md:inline-block ml-2 align-middle">
-                    <PriorityBadge priority={ticket.priority} />
-                  </span>
+                  <span className="hidden md:inline-flex"><PriorityBadge priority={ticket.priority} /></span>
                 </div>
 
-                {/* Created Date */}
-                <span className="text-xs text-gray-400 dark:text-gray-500">
-                  {formatDate(ticket.created_at)}
-                </span>
+                <span className="text-xs text-text-tertiary font-medium hidden md:block">{formatDate(ticket.created_at)}</span>
 
-                {/* Action Arrow (hidden on mobile) */}
-                <div className="justify-self-end text-gray-300 dark:text-gray-600 group-hover:text-brand-500 dark:group-hover:text-brand-400 transition hidden md:block">
-                  <ChevronRight size={18} className="translate-x-0 group-hover:translate-x-0.5 transition-transform" />
+                <div className="justify-self-end text-text-muted group-hover:text-brand-500 transition-colors hidden md:block">
+                  <ChevronRight size={18} className="transition-transform duration-200 group-hover:translate-x-1" />
                 </div>
               </Link>
             ))}
           </div>
         )}
-
       </div>
 
-      {/* ── PAGINATION CONTROLS BAR ────────────────────────────── */}
       {!loading && totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-1">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-            Showing <span className="text-gray-900 dark:text-white">{(currentPage - 1) * pageSize + 1}</span> to{' '}
-            <span className="text-gray-900 dark:text-white">
-              {Math.min(currentPage * pageSize, tickets.length)}
-            </span>{' '}
-            of <span className="text-gray-900 dark:text-white">{tickets.length}</span> tickets
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 animate-fade-up">
+          <p className="text-xs font-semibold text-text-tertiary">
+            Showing <span className="text-text-primary">{(currentPage - 1) * pageSize + 1}</span> to <span className="text-text-primary">{Math.min(currentPage * pageSize, tickets.length)}</span> of <span className="text-text-primary">{tickets.length}</span> tickets
           </p>
-          
+
           <div className="flex items-center gap-1.5">
-            {/* Previous Page */}
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="btn-secondary px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
-            >
-              Previous
+            <button onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))} disabled={currentPage === 1} className="w-8 h-8 rounded-lg bg-surface border border-border text-text-secondary hover:bg-surface-2 hover:text-text-primary hover:border-border-strong transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center" aria-label="Previous page">
+              <ChevronLeft size={14} />
             </button>
-            
-            {/* Page Numbers */}
-            {Array.from({ length: totalPages }, (_, index) => {
-              const p = index + 1
+
+            {Array.from({ length: totalPages }, (_, i) => {
+              const p = i + 1
+              const active = currentPage === p
               return (
-                <button
-                  key={p}
-                  onClick={() => setCurrentPage(p)}
-                  className={`w-8 h-8 rounded-lg text-xs font-bold transition flex items-center justify-center ${
-                    currentPage === p
-                      ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/10'
-                      : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50'
-                  }`}
-                >
+                <button key={p} onClick={() => setCurrentPage(p)} className={`w-8 h-8 rounded-lg text-xs font-bold transition flex items-center justify-center ${active ? 'bg-gradient-brand text-white shadow-glow-sm' : 'bg-surface border border-border text-text-secondary hover:bg-surface-2 hover:text-text-primary hover:border-border-strong'}`}>
                   {p}
                 </button>
               )
             })}
-            
-            {/* Next Page */}
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="btn-secondary px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
-            >
-              Next
+
+            <button onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="w-8 h-8 rounded-lg bg-surface border border-border text-text-secondary hover:bg-surface-2 hover:text-text-primary hover:border-border-strong transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center" aria-label="Next page">
+              <ChevronRight size={14} />
             </button>
           </div>
         </div>
       )}
+    </div>
+  )
+}
 
-      {/* Result stats summary */}
-      {!loading && tickets.length > 0 && (
-        <p className="text-xs text-gray-400 dark:text-gray-500 text-right">
-          {tickets.length} matching record{tickets.length !== 1 ? 's' : ''} found.
-        </p>
-      )}
-
+function FilterPills({ label, icon: Icon, options, value, onChange }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-text-tertiary flex items-center gap-1.5 shrink-0">
+        <Icon size={12} />
+        {label}
+      </span>
+      <div className="relative flex bg-surface-2 p-1 rounded-control border border-border">
+        {options.map((opt) => {
+          const active = value === opt
+          return (
+            <button key={opt} onClick={() => onChange(opt)} className={`relative z-10 px-3 py-1.5 rounded-small text-[11px] font-bold transition-all duration-200 ${active ? 'text-text-primary' : 'text-text-tertiary hover:text-text-primary'}`}>
+              {active && <span className="absolute inset-0 bg-surface rounded-small shadow-soft border border-border -z-10" />}
+              {opt}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

@@ -1,25 +1,41 @@
 import { Link } from 'react-router-dom'
-import { AlertTriangle, Home } from 'lucide-react'
+import { Home, Compass, ArrowLeft } from 'lucide-react'
 
 export default function NotFound() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
-      <div className="bg-yellow-50 dark:bg-yellow-950/40 p-4 rounded-full mb-6">
-        <AlertTriangle className="text-yellow-500 w-12 h-12 animate-bounce" />
+    <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden bg-bg isolate">
+      <div className="absolute inset-0 -z-10 pointer-events-none">
+        <div className="aurora-blob w-[500px] h-[500px] -top-32 -left-32 bg-brand-500/25 animate-blob" />
+        <div className="aurora-blob w-[400px] h-[400px] -bottom-32 -right-32 bg-indigo-500/20 animate-blob" style={{ animationDelay: '4s' }} />
       </div>
-      <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2 tracking-tight">
-        404 - Page Not Found
-      </h1>
-      <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md text-sm leading-relaxed">
-        The page you are looking for does not exist, has been removed, or is temporarily unavailable. Double check the address and try again.
-      </p>
-      <Link 
-        to="/" 
-        className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-brand-500/10 transition-all"
-      >
-        <Home size={16} />
-        Back to Dashboard
-      </Link>
+      <div className="absolute inset-0 -z-10 bg-grid opacity-30 [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_70%)]" />
+
+      <div className="text-center max-w-md animate-fade-up">
+        <div className="relative inline-block mb-8">
+          <h1 className="text-[140px] sm:text-[180px] font-extrabold leading-none tracking-tighter">
+            <span className="text-gradient bg-[length:200%_auto] animate-gradient-x">404</span>
+          </h1>
+          <div className="absolute -top-2 -right-4 w-12 h-12 rounded-2xl bg-gradient-brand flex items-center justify-center shadow-glow rotate-12 animate-pulse-soft">
+            <Compass size={22} className="text-white" />
+          </div>
+        </div>
+
+        <h2 className="text-2xl md:text-3xl font-extrabold text-text-primary tracking-tight">Page not found</h2>
+        <p className="text-sm md:text-base text-text-tertiary mt-3 leading-relaxed">
+          The page you're looking for doesn't exist, has been moved, or is temporarily unavailable. Let's get you back on track.
+        </p>
+
+        <div className="mt-8 flex items-center justify-center gap-3 flex-wrap">
+          <button onClick={() => window.history.back()} className="btn-secondary">
+            <ArrowLeft size={15} />
+            Go Back
+          </button>
+          <Link to="/" className="btn-primary">
+            <Home size={15} />
+            Back to Home
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }
